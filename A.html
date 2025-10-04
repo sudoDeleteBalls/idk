@@ -1,0 +1,185 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>TeeMingy's Assistant</title>
+  <style>
+    :root{--bg:#0f1720;--card:#0b1220;--accent:#6ee7b7;--muted:#93a3b8}
+    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071021 0%, #0b1724 100%);color:#e6f0f6}
+    .wrap{max-width:900px;margin:28px auto;padding:20px}
+    header{display:flex;gap:12px;align-items:center}
+    .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,#0ea5a4,#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:700}
+    h1{margin:0;font-size:20px}
+    p.sub{color:var(--muted);margin:6px 0 18px}.app{display:grid;grid-template-columns:1fr 320px;gap:18px}
+.card{background:rgba(255,255,255,0.03);border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+
+/* chat column */
+.chat{display:flex;flex-direction:column;height:70vh}
+.messages{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:78%;padding:10px;border-radius:10px}
+.user{align-self:flex-end;background:linear-gradient(90deg,#2b6cb0,#4f46e5);}
+.ai{align-self:flex-start;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.03)}
+.meta{font-size:12px;color:var(--muted);margin-bottom:6px}
+
+.composer{display:flex;gap:8px;padding-top:10px}
+textarea{flex:1;min-height:56px;max-height:160px;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+button{background:var(--accent);border:none;padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+
+/* sidebar */
+.side{display:flex;flex-direction:column;gap:12px}
+.small{font-size:13px;color:var(--muted)}
+input[type=file]{display:none}
+.btn-ghost{background:transparent;border:1px dashed rgba(255,255,255,0.04);padding:8px;border-radius:8px;color:var(--muted);cursor:pointer}
+
+footer.note{color:var(--muted);font-size:13px;margin-top:14px}
+pre{white-space:pre-wrap;background:rgba(0,0,0,0.2);padding:8px;border-radius:8px;font-size:13px}
+
+@media (max-width:880px){.app{grid-template-columns:1fr}.side{order:2}}
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">T M</div>
+      <div>
+        <h1>TeeMingy's Assistant</h1>
+        <p class="sub">Tiny local chat UI — connect it to a lightweight open model (Phi‑3 Mini) running on your device or a nearby PC</p>
+      </div>
+    </header><div class="app">
+  <div class="card chat" id="chatCard">
+    <div class="messages" id="messages" aria-live="polite"></div>
+
+    <div class="composer">
+      <textarea id="prompt" placeholder="Say hi to TeeMingy's Assistant — type something silly or serious..." ></textarea>
+      <button id="sendBtn">send</button>
+    </div>
+  </div>
+
+  <aside class="side">
+    <div class="card">
+      <div class="small"><strong>Quick start (non‑nerd friendly)</strong></div>
+      <ol style="color:var(--muted);padding-left:18px">
+        <li>Download a prebuilt model file (Phi‑3 Mini) in <code>.gguf</code> format to your PC/phone.</li>
+        <li>Run a tiny local server (KoboldCpp, llama.cpp or Ollama) that serves an HTTP API endpoint like <code>/api/chat</code>. If you use a PC, point the phone to <code>http://YOUR_PC_IP:5000/api/chat</code>.</li>
+        <li>In the box below "Server URL" type the URL (for local phone testing you can use <code>http://127.0.0.1:5000/api/chat</code> if server is on-device).</li>
+        <li>Then type messages and press send. The page sends your message to that endpoint and displays the reply.</li>
+      </ol>
+
+      <div style="margin-top:10px">
+        <label class="small">Server URL</label>
+        <input id="serverUrl" type="text" value="http://127.0.0.1:5000/api/chat" style="width:100%;margin-top:6px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit" />
+      </div>
+
+      <div style="margin-top:10px">
+        <div class="small"><strong>Example local server (for helpers)</strong></div>
+        <pre>koboldcpp --model /path/to/phi3-mini.gguf --api --listen 0.0.0.0 --port 5000
+
+// OR
+
+llama.cpp webui + convert model to gguf then run the web api
+
+// These create a simple HTTP API that this page can call.</pre> <div class="small" style="margin-top:6px;color:var(--muted)">If that sounded like space language, use a PC to run the model and put your PC's local IP address in "Server URL".</div> </div> </div>
+
+<div class="card">
+      <div class="small"><strong>Settings</strong></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn-ghost" id="clearBtn">clear convo</button>
+        <button class="btn-ghost" id="saveBtn">save transcript</button>
+      </div>
+
+      <div style="margin-top:10px">
+        <div class="small">Model:</div>
+        <div style="color:var(--muted);font-size:13px">Phi‑3 Mini (recommended) — quantize to 4bit/8bit for phone friendliness</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="small"><strong>Non‑nerd tips</strong></div>
+      <ul style="color:var(--muted);padding-left:18px">
+        <li>Use a PC if phone is slow — still test the UI on phone.</li>
+        <li>Don't freak if it's a bit slow at first. Chill, sip ur drink, it learns... kinda.</li>
+        <li>If you want me to help set up the server step‑by‑step, say "dumb it down pls" and I will provide exact commands for your OS.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="small"><strong>About privacy</strong></div>
+      <div style="color:var(--muted)">Talking to a local model = your data stays local. If you use a cloud API, check their privacy rules.</div>
+    </div>
+  </aside>
+</div>
+
+<footer class="note">Made with a lil sprinkle of chaos. TeeMingy's Assistant loves memes but will behave if u tell it to.</footer>
+
+  </div>  <script>
+    // Simple chat frontend that expects a POST {message: string} -> {reply: string} JSON response
+    const messagesEl = document.getElementById('messages');
+    const promptEl = document.getElementById('prompt');
+    const sendBtn = document.getElementById('sendBtn');
+    const serverUrlEl = document.getElementById('serverUrl');
+    const clearBtn = document.getElementById('clearBtn');
+    const saveBtn = document.getElementById('saveBtn');
+
+    function addMessage(who, text){
+      const div = document.createElement('div');
+      div.className = 'msg ' + (who === 'user' ? 'user' : 'ai') + ' card';
+      const meta = document.createElement('div'); meta.className='meta'; meta.textContent = who === 'user' ? 'you' : 'TeeMingy';
+      const body = document.createElement('div'); body.innerHTML = escapeHtml(text).replace(/\n/g,'<br>');
+      div.appendChild(meta); div.appendChild(body);
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function escapeHtml(unsafe) {
+      return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/\"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+    }
+
+    async function sendMessage(){
+      const text = promptEl.value.trim();
+      if(!text) return;
+      addMessage('user', text);
+      promptEl.value = '';
+
+      const url = serverUrlEl.value.trim() || '/api/chat';
+      addMessage('ai', '... thinking ...');
+      const placeholder = messagesEl.querySelector('.ai:last-child');
+
+      try{
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text })
+        });
+        if(!res.ok) throw new Error('server error ' + res.status);
+        const data = await res.json();
+        placeholder.querySelector('div:last-child').innerHTML = escapeHtml(data.reply || data.text || '[no reply]');
+      }catch(err){
+        placeholder.querySelector('div:last-child').innerHTML = 'Error: ' + escapeHtml(err.message || String(err));
+      }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    promptEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
+
+    clearBtn.addEventListener('click', ()=>{ messagesEl.innerHTML=''; });
+    saveBtn.addEventListener('click', ()=>{
+      const text = Array.from(messagesEl.querySelectorAll('.msg')).map(m=> {
+        const who = m.classList.contains('user') ? 'you' : 'TeeMingy';
+        return who + ': ' + m.querySelector('div:last-child').innerText;
+      }).join('\n\n');
+      const blob = new Blob([text], {type:'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'teemingy-transcript.txt'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+  </script></body>
+</html>
